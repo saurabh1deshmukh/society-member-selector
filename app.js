@@ -1,5 +1,17 @@
-// Fisher-Yates shuffle algorithm for uniform randomness
-function shuffleArray(array) {
+// Default mock data to seed if nothing exists in storage
+const DEFAULT_DATA = [
+  { name: "Alice Johnson", years: "2023, 2024" },
+  { name: "Bob Smith", years: "2022" },
+  { name: "Charlie Brown", years: "2021" },
+  { name: "Diana Prince", years: "" },
+  { name: "Evan Wright", years: "" },
+  { name: "Fiona Gallagher", years: "" },
+  { name: "George Clark", years: "2020" },
+  { name: "Hannah Abbott", years: "" }
+];
+
+// Fisher-Yates pure random shuffle
+function shuffle(array) {
   const arr = [...array];
   for (let i = arr.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -8,186 +20,228 @@ function shuffleArray(array) {
   return arr;
 }
 
-// Normalize strings for case-insensitive matching
-function cleanName(name) {
-  return name.trim();
+// Parse user entered comma-separated years into an array of numbers
+function parseYears(str) {
+  if (!str) return [];
+  return str
+    .split(',')
+    .map(y => parseInt(y.trim(), 10))
+    .filter(y => !isNaN(y))
+    .sort((a, b) => a - b);
 }
 
-function parseHistory(historyRaw) {
-  // Returns map: { "Owner Name": latestYearServed }
-  const serviceMap = new Map();
-  const lines = historyRaw.split("\n");
-
-  lines.forEach((line) => {
-    const parts = line.split(":");
-    if (parts.length >= 2) {
-      const year = parseInt(parts[0].trim(), 10);
-      const members = parts[1].split(",").map(cleanName);
-
-      if (!isNaN(year)) {
-        members.forEach((member) => {
-          if (member) {
-            const existingYear = serviceMap.get(member);
-            // Record the most recent year they served
-            if (!existingYear || year > existingYear) {
-              serviceMap.set(member, year);
-            }
-          }
-        });
-      }
+// Extract rows from DOM table
+function getTableData() {
+  const rows = document.querySelectorAll('#owners-tbody tr');
+  const data = [];
+  rows.forEach(row => {
+    const nameInput = row.querySelector('.owner-name');
+    const yearsInput = row.querySelector('.owner-years');
+    const name = nameInput ? nameInput.value.trim() : '';
+    const yearsStr = yearsInput ? yearsInput.value.trim() : '';
+    if (name) {
+      data.push({ name, years: yearsStr });
     }
   });
-
-  return serviceMap;
+  return data;
 }
 
-function runSelection() {
-  const ownersRaw = document.getElementById("ownersInput").value;
-  const historyRaw = document.getElementById("historyInput").value;
-  const targetCount = parseInt(document.getElementById("targetCount").value, 10);
+// Save current table state to localStorage
+function persistData() {
+  const data = getTableData();
+  localStorage.setItem('owners_data', JSON.stringify(data));
+}
 
-  const statusBox = document.getElementById("statusMessage");
-  const resultsContainer = document.getElementById("resultsContainer");
-  const statsContainer = document.getElementById("statsSummary");
+// Render a single row
+function createTableRow(name = '', years = '') {
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td><input type="text" class="owner-name" placeholder="Owner Name" value="${name}"></td>
+    <td><input type="text" class="owner-years" placeholder="e.g. 2021, 2023" value="${years}"></td>
+    <td><button type="button" class="btn-delete" title="Remove row">&times;</button></td>
+  `;
 
-  // Reset UI status
-  statusBox.className = "status-box hidden";
-  statusBox.textContent = "";
-
-  // 1. Parse eligible owners
-  const owners = [
-    ...new Set(
-      ownersRaw
-        .split("\n")
-        .map(cleanName)
-        .filter((n) => n.length > 0)
-    )
-  ];
-
-  if (owners.length === 0) {
-    statusBox.textContent = "Please provide at least one owner.";
-    statusBox.classList.remove("hidden");
-    statusBox.classList.add("error");
-    return;
-  }
-
-  if (isNaN(targetCount) || targetCount <= 0) {
-    statusBox.textContent = "Please provide a valid committee size.";
-    statusBox.classList.remove("hidden");
-    statusBox.classList.add("error");
-    return;
-  }
-
-  // 2. Parse past historical committees
-  const historyMap = parseHistory(historyRaw);
-
-  // 3. Separate fresh members from past members
-  const freshCandidates = [];
-  const pastCandidates = [];
-
-  owners.forEach((owner) => {
-    if (historyMap.has(owner)) {
-      pastCandidates.push({
-        name: owner,
-        lastServed: historyMap.get(owner),
-      });
-    } else {
-      freshCandidates.push(owner);
-    }
+  // Attach auto-save triggers
+  tr.querySelectorAll('input').forEach(input => {
+    input.addEventListener('input', persistData);
   });
+
+  tr.querySelector('.btn-delete').addEventListener('click', () => {
+    tr.remove();
+    persistData();
+  });
+
+  return tr;
+}
+
+// Main selection algorithm
+function runCommitteeSelection(ownersList, targetCount) {
+  // Pre-calculate tenure metadata
+  const evaluatedOwners = ownersList.map(item => {
+    const yearsArr = parseYears(item.years);
+    const tenureCount = yearsArr.length;
+    const lastServedYear = tenureCount > 0 ? Math.max(...yearsArr) : null;
+
+    return {
+      name: item.name,
+      tenureCount: tenureCount,
+      lastServedYear: lastServedYear,
+      allYears: yearsArr
+    };
+  });
+
+  // Step 1: Divide into fresh (tenure = 0) vs past members (tenure > 0)
+  const freshOwners = evaluatedOwners.filter(o => o.tenureCount === 0);
+  const pastOwners = evaluatedOwners.filter(o => o.tenureCount > 0);
 
   const selected = [];
 
-  // 4. Primary Selection: Pick from fresh candidates
-  const shuffledFresh = shuffleArray(freshCandidates);
-  const freshToPickCount = Math.min(shuffledFresh.length, targetCount);
-
-  for (let i = 0; i < freshToPickCount; i++) {
-    selected.push({
-      name: shuffledFresh[i],
-      reason: "Fresh (Never Served)",
-      badgeClass: "fresh"
-    });
+  // Randomly draw fresh candidates first
+  const shuffledFresh = shuffle(freshOwners);
+  const freshToTake = Math.min(targetCount, shuffledFresh.length);
+  for (let i = 0; i < freshToTake; i++) {
+    selected.push(shuffledFresh[i]);
   }
 
-  // 5. Fallback Selection: Fill remaining quota by tenure
   let remainingSlots = targetCount - selected.length;
 
-  if (remainingSlots > 0 && pastCandidates.length > 0) {
-    // Group candidates by the year they last served
-    const pastByYear = {};
-    pastCandidates.forEach((cand) => {
-      if (!pastByYear[cand.lastServed]) {
-        pastByYear[cand.lastServed] = [];
+  // Step 2: Fallback logic - pick based on SHORTEST TENURE
+  if (remainingSlots > 0 && pastOwners.length > 0) {
+    // Group past members by tenure length (e.g. 1 term, 2 terms, etc.)
+    const tenureBuckets = {};
+    pastOwners.forEach(owner => {
+      if (!tenureBuckets[owner.tenureCount]) {
+        tenureBuckets[owner.tenureCount] = [];
       }
-      pastByYear[cand.lastServed].push(cand.name);
+      tenureBuckets[owner.tenureCount].push(owner);
     });
 
-    // Sort years ascending: oldest tenure first
-    const sortedYears = Object.keys(pastByYear)
+    // Sort tenure counts ascending (1 term before 2 terms)
+    const sortedTenures = Object.keys(tenureBuckets)
       .map(Number)
       .sort((a, b) => a - b);
 
-    for (const year of sortedYears) {
+    for (const tenure of sortedTenures) {
       if (remainingSlots <= 0) break;
 
-      const candidatesFromThisYear = shuffleArray(pastByYear[year]);
-      const pickCount = Math.min(candidatesFromThisYear.length, remainingSlots);
+      let bucket = tenureBuckets[tenure];
 
-      for (let i = 0; i < pickCount; i++) {
-        selected.push({
-          name: candidatesFromThisYear[i],
-          reason: `Tenure (Last served: ${year})`,
-          badgeClass: "tenure"
-        });
+      // Within the same tenure count, prioritize those whose last term was longest ago
+      const yearBuckets = {};
+      bucket.forEach(owner => {
+        if (!yearBuckets[owner.lastServedYear]) {
+          yearBuckets[owner.lastServedYear] = [];
+        }
+        yearBuckets[owner.lastServedYear].push(owner);
+      });
+
+      // Sort past years ascending (older served years picked first)
+      const sortedYears = Object.keys(yearBuckets)
+        .map(Number)
+        .sort((a, b) => a - b);
+
+      for (const year of sortedYears) {
+        if (remainingSlots <= 0) break;
+
+        // Randomly select among candidates tied for tenure length & year
+        const candidatePool = shuffle(yearBuckets[year]);
+        const countToPick = Math.min(remainingSlots, candidatePool.length);
+
+        for (let i = 0; i < countToPick; i++) {
+          selected.push(candidatePool[i]);
+        }
+
+        remainingSlots -= countToPick;
       }
-      remainingSlots -= pickCount;
     }
   }
 
-  // Render warnings if total pool was smaller than required count
-  if (selected.length < targetCount) {
-    statusBox.textContent = `Warning: Only ${selected.length} members could be selected out of the requested${targetCount} because the total pool was exhausted.`;
-    statusBox.classList.remove("hidden");
-    statusBox.classList.add("warn");
-  }
-
-  // Render Selected List
-  renderResults(selected);
-
-  // Render Stats
-  statsContainer.innerHTML = `
-    <strong>Pool Summary:</strong> Total Owners: ${owners.length} | 
-    Fresh Pool: ${freshCandidates.length} | 
-    Past Members: ${pastCandidates.length}
-  `;
-  statsContainer.classList.remove("hidden");
+  return {
+    selected,
+    totalEligible: evaluatedOwners.length,
+    freshAvailable: freshOwners.length
+  };
 }
 
-function renderResults(selectedMembers) {
-  const resultsContainer = document.getElementById("resultsContainer");
+// UI Initialization
+document.addEventListener('DOMContentLoaded', () => {
+  const tbody = document.getElementById('owners-tbody');
+  const addBtn = document.getElementById('add-row-btn');
+  const submitBtn = document.getElementById('submit-btn');
+  const countInput = document.getElementById('required-count');
+  const resultsList = document.getElementById('results-list');
+  const resultsMeta = document.getElementById('results-meta');
 
-  if (selectedMembers.length === 0) {
-    resultsContainer.innerHTML = `<div class="empty-state">No members selected.</div>`;
-    return;
-  }
-
-  const list = document.createElement("ul");
-  list.className = "member-list";
-
-  selectedMembers.forEach((member, index) => {
-    const li = document.createElement("li");
-    li.className = "member-item";
-    li.innerHTML = `
-      <span><strong>#${index + 1}</strong>${member.name}</span>
-      <span class="badge ${member.badgeClass}">${member.reason}</span>
-    `;
-    list.appendChild(li);
+  // Load existing data or initialize with default rows
+  const savedData = localStorage.getItem('owners_data');
+  const initialData = savedData ? JSON.parse(savedData) : DEFAULT_DATA;
+  
+  initialData.forEach(row => {
+    tbody.appendChild(createTableRow(row.name, row.years));
   });
 
-  resultsContainer.innerHTML = "";
-  resultsContainer.appendChild(list);
-}
+  countInput.value = localStorage.getItem('target_count') || '3';
 
-// Attach event listener
-document.getElementById("generateBtn").addEventListener("click", runSelection);
+  // Add new row button
+  addBtn.addEventListener('click', () => {
+    const row = createTableRow();
+    tbody.appendChild(row);
+    row.querySelector('.owner-name').focus();
+  });
+
+  countInput.addEventListener('input', () => {
+    localStorage.setItem('target_count', countInput.value);
+  });
+
+  // Submit button handler
+  submitBtn.addEventListener('click', () => {
+    const data = getTableData();
+    const count = parseInt(countInput.value, 10);
+
+    if (data.length === 0) {
+      alert('Please add at least one owner name to the table.');
+      return;
+    }
+
+    if (isNaN(count) || count <= 0) {
+      alert('Please enter a valid count greater than 0.');
+      return;
+    }
+
+    const { selected, totalEligible, freshAvailable } = runCommitteeSelection(data, count);
+
+    // Update UI
+    resultsList.innerHTML = '';
+    resultsMeta.textContent = `Selected ${selected.length} of ${count} required (Total owners: ${totalEligible}, Never served: ${freshAvailable})`;
+
+    selected.forEach(candidate => {
+      const li = document.createElement('li');
+
+      const nameSpan = document.createElement('strong');
+      nameSpan.textContent = candidate.name;
+
+      const badge = document.createElement('span');
+      badge.classList.add('badge');
+
+      if (candidate.tenureCount === 0) {
+        badge.classList.add('badge-fresh');
+        badge.textContent = 'Never Served';
+      } else {
+        badge.classList.add('badge-tenure');
+        badge.textContent = `Tenure: ${candidate.tenureCount} term(s) (Last: ${candidate.lastServedYear})`;
+      }
+
+      li.appendChild(nameSpan);
+      li.appendChild(badge);
+      resultsList.appendChild(li);
+    });
+
+    if (selected.length < count) {
+      const warningLi = document.createElement('li');
+      warningLi.style.borderColor = '#ef4444';
+      warningLi.style.color = '#ef4444';
+      warningLi.textContent = `All eligible owners have been selected (${selected.length} available).`;
+      resultsList.appendChild(warningLi);
+    }
+  });
+});
