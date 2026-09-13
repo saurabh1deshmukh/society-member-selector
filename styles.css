@@ -141,7 +141,7 @@ th {
   z-index: 1;
 }
 
-/* 16px base font prevents Safari on iOS from auto-zooming the page */
+/* 16px minimum prevents iOS Safari from automatically zooming into inputs */
 td input, 
 .input-group input {
   width: 100%;
@@ -195,16 +195,9 @@ td input:focus,
   background-color: #e2e8f0;
 }
 
-/* Hide native file input, activate via its linked label */
-#excel-file-input {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  border: 0;
+/* Completely hides the native file picker so only the styled label button appears */
+.hidden-file-input {
+  display: none !important;
 }
 
 .upload-label {

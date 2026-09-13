@@ -15,18 +15,18 @@
     </header>
 
     <div class="layout">
-      <!-- Left Panel: Table, Import, and Actions -->
+      <!-- Left Section: Data Management -->
       <section class="card">
         <div class="card-header">
           <h2>Owners &amp; History</h2>
           <div class="header-actions">
-            <!-- Native label acts as the direct touch target on mobile -->
             <label for="excel-file-input" class="btn btn-secondary upload-label">
               &#128196; Upload Excel/CSV
             </label>
             <input 
               type="file" 
               id="excel-file-input" 
+              class="hidden-file-input"
               accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv" 
             />
             <button id="download-sample-btn" type="button" class="btn btn-secondary">&#128229; Sample</button>
@@ -44,7 +44,7 @@
               </tr>
             </thead>
             <tbody id="owners-tbody">
-              <!-- Dynamically populated rows -->
+              <!-- Dynamically rendered rows -->
             </tbody>
           </table>
         </div>
@@ -64,10 +64,10 @@
         </div>
       </section>
 
-      <!-- Right Panel: Selection Output -->
+      <!-- Right Section: Results Display -->
       <section class="card">
         <h2>Selected Committee</h2>
-        <div id="results-meta" class="meta-info">Set parameters and tap "Generate Committee".</div>
+        <div id="results-meta" class="meta-info">Set parameters and click "Generate Committee".</div>
         <ul id="results-list" class="results-list">
           <li class="empty-state">No selection generated yet.</li>
         </ul>
