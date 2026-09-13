@@ -6,7 +6,11 @@ const DEFAULT_DATA = [
   { name: "Evan Wright", years: "" },
   { name: "Fiona Gallagher", years: "" },
   { name: "George Clark", years: "2020" },
-  { name: "Hannah Abbott", years: "" }
+  { name: "Hannah Abbott", years: "" },
+  { name: "Ian Malcolm", years: "2019" },
+  { name: "Julia Roberts", years: "2018, 2022" },
+  { name: "Kevin Bacon", years: "" },
+  { name: "Laura Croft", years: "2017" }
 ];
 
 // Fisher-Yates pure random shuffle
@@ -19,18 +23,18 @@ function shuffle(array) {
   return arr;
 }
 
-// Splits by comma, semicolon, space, slashes, or dashes
+// Parses comma, semicolon, space, slashes, or dashes into valid year integers
 function parseYears(raw) {
   if (raw === null || raw === undefined) return [];
   return String(raw)
     .split(/[,;\s\/\-]+/)
     .map(y => parseInt(y.trim(), 10))
     .filter(y => !isNaN(y) && y >= 1950 && y <= 2100)
-    .filter((y, idx, self) => self.indexOf(y) === idx) // unique years per person
+    .filter((y, idx, self) => self.indexOf(y) === idx)
     .sort((a, b) => a - b);
 }
 
-// Read current data rows from HTML table
+// Read current data rows from the HTML table
 function getTableData() {
   const rows = document.querySelectorAll('#owners-tbody tr');
   const data = [];
@@ -40,7 +44,6 @@ function getTableData() {
     const name = nameInput ? nameInput.value.trim() : '';
     const yearsStr = yearsInput ? yearsInput.value.trim() : '';
     
-    // Save row if either name or years is entered, or if user intentionally left a blank row
     if (name || yearsStr) {
       data.push({ name, years: yearsStr });
     }
@@ -48,13 +51,13 @@ function getTableData() {
   return data;
 }
 
-// Save current table state to localStorage
+// Save table state to browser storage
 function persistData() {
   const data = getTableData();
   localStorage.setItem('owners_data', JSON.stringify(data));
 }
 
-// Build a <tr> element
+// Create a table row element
 function createTableRow(name = '', years = '') {
   const tr = document.createElement('tr');
 
@@ -96,9 +99,9 @@ function createTableRow(name = '', years = '') {
   return tr;
 }
 
-// Core Selection Algorithm
+// Multi-tier selection algorithm
 function runCommitteeSelection(ownersList, targetCount) {
-  // 1. Deduplicate by owner name (case-insensitive) & consolidate years
+  // 1. Deduplicate by name and merge served terms
   const dedupMap = new Map();
   ownersList.forEach(item => {
     const cleanName = item.name.trim();
@@ -129,7 +132,6 @@ function runCommitteeSelection(ownersList, targetCount) {
   // 2. Evaluate tenure
   const evaluatedOwners = uniqueOwners.map(item => {
     let tenureCount = item.years.length;
-    // Fallback: If user wrote non-empty text (e.g. "Served before") but no 4-digit years were found
     if (tenureCount === 0 && item.hasUnparsedHistory) {
       tenureCount = 1;
     }
@@ -144,13 +146,13 @@ function runCommitteeSelection(ownersList, targetCount) {
     };
   });
 
-  // 3. Separate Tier 1 (Fresh: never served) and Tier 2 (Past members)
+  // 3. Separate fresh members (tenure = 0) vs past members (tenure > 0)
   const freshOwners = evaluatedOwners.filter(o => o.tenureCount === 0);
   const pastOwners = evaluatedOwners.filter(o => o.tenureCount > 0);
 
   const selected = [];
 
-  // Pick fresh owners randomly first
+  // Pick fresh candidates randomly
   const shuffledFresh = shuffle(freshOwners);
   const freshToTake = Math.min(targetCount, shuffledFresh.length);
   for (let i = 0; i < freshToTake; i++) {
@@ -159,7 +161,7 @@ function runCommitteeSelection(ownersList, targetCount) {
 
   let remainingSlots = targetCount - selected.length;
 
-  // 4. Fallback: Shortest tenure first (1 term before 2 terms, etc.)
+  // 4. Fallback logic: Shortest tenure first (1 term before 2 terms), break ties with oldest served year
   if (remainingSlots > 0 && pastOwners.length > 0) {
     const tenureBuckets = {};
     pastOwners.forEach(owner => {
@@ -169,7 +171,6 @@ function runCommitteeSelection(ownersList, targetCount) {
       tenureBuckets[owner.tenureCount].push(owner);
     });
 
-    // Sort tenure count ascending (least terms first)
     const sortedTenures = Object.keys(tenureBuckets)
       .map(Number)
       .sort((a, b) => a - b);
@@ -179,7 +180,6 @@ function runCommitteeSelection(ownersList, targetCount) {
 
       const bucket = tenureBuckets[tenure];
 
-      // Within equal tenure, group by last year served (oldest first)
       const yearBuckets = {};
       bucket.forEach(owner => {
         const yr = owner.lastServedYear || 1900;
@@ -196,7 +196,6 @@ function runCommitteeSelection(ownersList, targetCount) {
       for (const year of sortedYears) {
         if (remainingSlots <= 0) break;
 
-        // Shuffle candidates tied for same tenure count and last served year
         const candidatePool = shuffle(yearBuckets[year]);
         const countToPick = Math.min(remainingSlots, candidatePool.length);
 
@@ -216,7 +215,7 @@ function runCommitteeSelection(ownersList, targetCount) {
   };
 }
 
-// Process Excel/CSV File
+// Parse uploaded Excel (.xlsx, .xls) or CSV
 function handleFileUpload(file, tbody) {
   const reader = new FileReader();
 
@@ -233,7 +232,6 @@ function handleFileUpload(file, tbody) {
         return;
       }
 
-      // Use DocumentFragment for performant DOM batch update
       const fragment = document.createDocumentFragment();
       let importedCount = 0;
 
@@ -259,7 +257,7 @@ function handleFileUpload(file, tbody) {
       tbody.innerHTML = '';
       tbody.appendChild(fragment);
       persistData();
-      alert(`Imported ${importedCount} owners from file.`);
+      alert(`Imported ${importedCount} owners successfully.`);
     } catch (err) {
       console.error(err);
       alert('Failed to parse file. Make sure it is a valid .xlsx, .xls, or .csv file.');
@@ -269,18 +267,19 @@ function handleFileUpload(file, tbody) {
   reader.readAsArrayBuffer(file);
 }
 
-// App Bootstrap
+// Initialize Application
 document.addEventListener('DOMContentLoaded', () => {
   const tbody = document.getElementById('owners-tbody');
   const addBtn = document.getElementById('add-row-btn');
   const uploadBtn = document.getElementById('upload-btn');
   const fileInput = document.getElementById('excel-file-input');
+  const downloadSampleBtn = document.getElementById('download-sample-btn');
   const submitBtn = document.getElementById('submit-btn');
   const countInput = document.getElementById('required-count');
   const resultsList = document.getElementById('results-list');
   const resultsMeta = document.getElementById('results-meta');
 
-  // Populate saved or default data
+  // Load saved data or initialize with defaults
   let savedData = null;
   try {
     savedData = JSON.parse(localStorage.getItem('owners_data'));
@@ -306,24 +305,52 @@ document.addEventListener('DOMContentLoaded', () => {
     tbody.appendChild(row);
     const input = row.querySelector('.owner-name');
     if (input) input.focus();
+    persistData();
   });
 
-  // File Upload Handlers
-  uploadBtn.addEventListener('click', () => fileInput.click());
+  // Upload Excel/CSV Handler
+  if (uploadBtn && fileInput) {
+    uploadBtn.addEventListener('click', () => fileInput.click());
 
-  fileInput.addEventListener('change', (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      handleFileUpload(file, tbody);
-      fileInput.value = '';
-    }
-  });
+    fileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        handleFileUpload(file, tbody);
+        fileInput.value = '';
+      }
+    });
+  }
+
+  // Download Sample Excel Handler
+  if (downloadSampleBtn) {
+    downloadSampleBtn.addEventListener('click', () => {
+      const sampleRows = [
+        { "Owner Name": "Alice Johnson", "Years Served": "2023, 2024" },
+        { "Owner Name": "Bob Smith", "Years Served": "2022" },
+        { "Owner Name": "Charlie Brown", "Years Served": "2021" },
+        { "Owner Name": "Diana Prince", "Years Served": "" },
+        { "Owner Name": "Evan Wright", "Years Served": "" },
+        { "Owner Name": "Fiona Gallagher", "Years Served": "" },
+        { "Owner Name": "George Clark", "Years Served": "2020" },
+        { "Owner Name": "Hannah Abbott", "Years Served": "" },
+        { "Owner Name": "Ian Malcolm", "Years Served": "2019" },
+        { "Owner Name": "Julia Roberts", "Years Served": "2018, 2022" },
+        { "Owner Name": "Kevin Bacon", "Years Served": "" },
+        { "Owner Name": "Laura Croft", "Years Served": "2017" }
+      ];
+
+      const ws = XLSX.utils.json_to_sheet(sampleRows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Owners");
+      XLSX.writeFile(wb, "committee_sample.xlsx");
+    });
+  }
 
   countInput.addEventListener('input', () => {
     localStorage.setItem('target_count', countInput.value);
   });
 
-  // Selection Generation Trigger
+  // Generate Committee Button
   submitBtn.addEventListener('click', () => {
     const data = getTableData();
     const count = parseInt(countInput.value, 10);
@@ -340,7 +367,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const { selected, totalEligible, freshAvailable } = runCommitteeSelection(data, count);
 
-    // Render results
+    // Update UI Results
     resultsList.innerHTML = '';
     resultsMeta.textContent = `Selected ${selected.length} of ${count} requested (Total pool: ${totalEligible}, Never served: ${freshAvailable})`;
 
