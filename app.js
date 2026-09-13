@@ -101,7 +101,6 @@ function createTableRow(name = '', years = '') {
 
 // Multi-tier selection algorithm
 function runCommitteeSelection(ownersList, targetCount) {
-  // 1. Deduplicate by name and merge served terms
   const dedupMap = new Map();
   ownersList.forEach(item => {
     const cleanName = item.name.trim();
@@ -129,7 +128,6 @@ function runCommitteeSelection(ownersList, targetCount) {
 
   const uniqueOwners = Array.from(dedupMap.values());
 
-  // 2. Evaluate tenure
   const evaluatedOwners = uniqueOwners.map(item => {
     let tenureCount = item.years.length;
     if (tenureCount === 0 && item.hasUnparsedHistory) {
@@ -146,13 +144,11 @@ function runCommitteeSelection(ownersList, targetCount) {
     };
   });
 
-  // 3. Separate fresh members (tenure = 0) vs past members (tenure > 0)
   const freshOwners = evaluatedOwners.filter(o => o.tenureCount === 0);
   const pastOwners = evaluatedOwners.filter(o => o.tenureCount > 0);
 
   const selected = [];
 
-  // Pick fresh candidates randomly
   const shuffledFresh = shuffle(freshOwners);
   const freshToTake = Math.min(targetCount, shuffledFresh.length);
   for (let i = 0; i < freshToTake; i++) {
@@ -161,7 +157,6 @@ function runCommitteeSelection(ownersList, targetCount) {
 
   let remainingSlots = targetCount - selected.length;
 
-  // 4. Fallback logic: Shortest tenure first (1 term before 2 terms), break ties with oldest served year
   if (remainingSlots > 0 && pastOwners.length > 0) {
     const tenureBuckets = {};
     pastOwners.forEach(owner => {
@@ -217,6 +212,11 @@ function runCommitteeSelection(ownersList, targetCount) {
 
 // Parse uploaded Excel (.xlsx, .xls) or CSV
 function handleFileUpload(file, tbody) {
+  if (typeof XLSX === 'undefined') {
+    alert('Excel library not loaded. Check internet connection or ad-blockers.');
+    return;
+  }
+
   const reader = new FileReader();
 
   reader.onload = (e) => {
@@ -267,7 +267,64 @@ function handleFileUpload(file, tbody) {
   reader.readAsArrayBuffer(file);
 }
 
-// Initialize Application
+// Guaranteed file trigger helper using standard browser Blob
+function triggerBlobDownload(blob, filename) {
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.style.display = 'none';
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => {
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+  }, 200);
+}
+
+// Native Excel or CSV download handler
+function downloadSampleFile() {
+  const sampleRows = [
+    { "Owner Name": "Alice Johnson", "Years Served": "2023, 2024" },
+    { "Owner Name": "Bob Smith", "Years Served": "2022" },
+    { "Owner Name": "Charlie Brown", "Years Served": "2021" },
+    { "Owner Name": "Diana Prince", "Years Served": "" },
+    { "Owner Name": "Evan Wright", "Years Served": "" },
+    { "Owner Name": "Fiona Gallagher", "Years Served": "" },
+    { "Owner Name": "George Clark", "Years Served": "2020" },
+    { "Owner Name": "Hannah Abbott", "Years Served": "" },
+    { "Owner Name": "Ian Malcolm", "Years Served": "2019" },
+    { "Owner Name": "Julia Roberts", "Years Served": "2018, 2022" },
+    { "Owner Name": "Kevin Bacon", "Years Served": "" },
+    { "Owner Name": "Laura Croft", "Years Served": "2017" }
+  ];
+
+  // Try downloading native .xlsx via SheetJS
+  if (typeof XLSX !== 'undefined') {
+    try {
+      const ws = XLSX.utils.json_to_sheet(sampleRows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Owners");
+      
+      const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+      const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      triggerBlobDownload(blob, "committee_sample.xlsx");
+      return;
+    } catch (e) {
+      console.warn("SheetJS write failed, falling back to CSV", e);
+    }
+  }
+
+  // Fallback: Direct CSV generator (runs with zero dependencies)
+  const csvHeaders = "Owner Name,Years Served\n";
+  const csvBody = sampleRows
+    .map(r => `"${r["Owner Name"]}","${r["Years Served"]}"`)
+    .join("\n");
+  const csvBlob = new Blob([csvHeaders + csvBody], { type: 'text/csv;charset=utf-8;' });
+  triggerBlobDownload(csvBlob, "committee_sample.csv");
+}
+
+// App Bootstrap
 document.addEventListener('DOMContentLoaded', () => {
   const tbody = document.getElementById('owners-tbody');
   const addBtn = document.getElementById('add-row-btn');
@@ -321,28 +378,11 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Download Sample Excel Handler
+  // Robust Download Sample Handler
   if (downloadSampleBtn) {
-    downloadSampleBtn.addEventListener('click', () => {
-      const sampleRows = [
-        { "Owner Name": "Alice Johnson", "Years Served": "2023, 2024" },
-        { "Owner Name": "Bob Smith", "Years Served": "2022" },
-        { "Owner Name": "Charlie Brown", "Years Served": "2021" },
-        { "Owner Name": "Diana Prince", "Years Served": "" },
-        { "Owner Name": "Evan Wright", "Years Served": "" },
-        { "Owner Name": "Fiona Gallagher", "Years Served": "" },
-        { "Owner Name": "George Clark", "Years Served": "2020" },
-        { "Owner Name": "Hannah Abbott", "Years Served": "" },
-        { "Owner Name": "Ian Malcolm", "Years Served": "2019" },
-        { "Owner Name": "Julia Roberts", "Years Served": "2018, 2022" },
-        { "Owner Name": "Kevin Bacon", "Years Served": "" },
-        { "Owner Name": "Laura Croft", "Years Served": "2017" }
-      ];
-
-      const ws = XLSX.utils.json_to_sheet(sampleRows);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Owners");
-      XLSX.writeFile(wb, "committee_sample.xlsx");
+    downloadSampleBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      downloadSampleFile();
     });
   }
 
