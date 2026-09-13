@@ -18,12 +18,20 @@
   margin: 0;
   padding: 0;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  -webkit-tap-highlight-color: transparent;
 }
 
 body {
   background-color: var(--bg);
   color: var(--text);
-  padding: 2rem 1rem;
+  padding: 1rem;
+  line-height: 1.5;
+}
+
+@media (min-width: 768px) {
+  body {
+    padding: 2rem 1rem;
+  }
 }
 
 .container {
@@ -33,24 +41,24 @@ body {
 
 header {
   text-align: center;
-  margin-bottom: 2rem;
+  margin-bottom: 1.5rem;
 }
 
 h1 {
-  font-size: 1.85rem;
+  font-size: 1.6rem;
   color: #0f172a;
 }
 
 .subtitle {
   color: var(--text-muted);
-  font-size: 0.95rem;
+  font-size: 0.85rem;
   margin-top: 0.25rem;
 }
 
 .layout {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 1.5rem;
+  gap: 1.25rem;
 }
 
 @media (min-width: 860px) {
@@ -69,16 +77,30 @@ h1 {
 
 .card-header {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 0.5rem;
+  flex-direction: column;
+  gap: 0.75rem;
   margin-bottom: 1rem;
 }
 
+@media (min-width: 540px) {
+  .card-header {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
+}
+
 .header-actions {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 0.5rem;
+}
+
+@media (min-width: 540px) {
+  .header-actions {
+    display: flex;
+    flex-wrap: wrap;
+  }
 }
 
 h2 {
@@ -87,20 +109,23 @@ h2 {
 }
 
 .table-container {
-  max-height: 420px;
+  max-height: 380px;
   overflow-y: auto;
+  overflow-x: auto;
   border: 1px solid var(--border);
   border-radius: 6px;
   margin-bottom: 1.25rem;
+  -webkit-overflow-scrolling: touch;
 }
 
 table {
   width: 100%;
   border-collapse: collapse;
+  min-width: 320px;
 }
 
 th, td {
-  padding: 0.55rem 0.75rem;
+  padding: 0.5rem 0.6rem;
   text-align: left;
   border-bottom: 1px solid var(--border);
 }
@@ -116,28 +141,37 @@ th {
   z-index: 1;
 }
 
-td input {
+/* 16px base font prevents Safari on iOS from auto-zooming the page */
+td input, 
+.input-group input {
   width: 100%;
-  padding: 0.45rem 0.6rem;
+  padding: 0.55rem 0.6rem;
   border: 1px solid var(--border);
   border-radius: 4px;
-  font-size: 0.875rem;
+  font-size: 16px;
 }
 
-td input:focus {
+td input:focus,
+.input-group input:focus {
   outline: none;
   border-color: var(--primary);
   box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
 }
 
 .btn {
-  padding: 0.5rem 0.85rem;
+  padding: 0.65rem 0.85rem;
   font-weight: 600;
-  font-size: 0.82rem;
+  font-size: 0.85rem;
   border: none;
   border-radius: 6px;
   cursor: pointer;
-  transition: all 0.15s ease;
+  text-align: center;
+  text-decoration: none;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  transition: background 0.15s ease;
+  user-select: none;
 }
 
 .btn-primary {
@@ -145,7 +179,8 @@ td input:focus {
   color: #fff;
 }
 
-.btn-primary:hover {
+.btn-primary:hover,
+.btn-primary:active {
   background-color: var(--primary-hover);
 }
 
@@ -155,8 +190,26 @@ td input:focus {
   border: 1px solid var(--border);
 }
 
-.btn-secondary:hover {
+.btn-secondary:hover,
+.btn-secondary:active {
   background-color: #e2e8f0;
+}
+
+/* Hide native file input, activate via its linked label */
+#excel-file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+
+.upload-label {
+  margin: 0;
+  cursor: pointer;
 }
 
 .btn-delete {
@@ -164,62 +217,79 @@ td input:focus {
   border: none;
   color: var(--danger);
   cursor: pointer;
-  font-size: 1.15rem;
-  padding: 0.25rem 0.5rem;
+  font-size: 1.4rem;
+  line-height: 1;
+  padding: 0.35rem 0.5rem;
   border-radius: 4px;
   display: block;
   margin: 0 auto;
 }
 
-.btn-delete:hover {
+.btn-delete:active {
   background: #fee2e2;
 }
 
 .controls-bar {
   display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 1rem;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+@media (min-width: 600px) {
+  .controls-bar {
+    flex-direction: row;
+    align-items: flex-end;
+    justify-content: space-between;
+  }
+}
+
+.input-row {
+  display: flex;
+  gap: 0.65rem;
+  width: 100%;
 }
 
 .input-group {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: 0.3rem;
+  flex: 1;
 }
 
 .input-group label {
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   font-weight: 600;
-}
-
-.input-group input {
-  width: 130px;
-  padding: 0.5rem;
-  border: 1px solid var(--border);
-  border-radius: 6px;
 }
 
 .results-list {
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
-  margin-top: 1rem;
+  gap: 0.65rem;
+  margin-top: 0.75rem;
 }
 
 .results-list li {
-  padding: 0.85rem;
+  padding: 0.75rem;
   border-radius: 6px;
   border: 1px solid var(--border);
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+@media (min-width: 480px) {
+  .results-list li {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
 }
 
 .meta-info {
   font-size: 0.85rem;
   color: var(--text-muted);
+  line-height: 1.4;
 }
 
 .badge {
@@ -228,6 +298,13 @@ td input:focus {
   padding: 0.25rem 0.55rem;
   border-radius: 12px;
   color: #fff;
+  align-self: flex-start;
+}
+
+@media (min-width: 480px) {
+  .badge {
+    align-self: center;
+  }
 }
 
 .badge-fresh {
@@ -243,5 +320,5 @@ td input:focus {
   color: var(--text-muted);
   justify-content: center !important;
   text-align: center;
-  padding: 2rem !important;
+  padding: 2rem 1rem !important;
 }

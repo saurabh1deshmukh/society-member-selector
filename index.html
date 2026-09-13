@@ -2,29 +2,34 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
   <title>Society Committee Selector</title>
   <link rel="stylesheet" href="styles.css" />
-  <!-- SheetJS Library for reading .xlsx and .xls files directly in the browser -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
 <body>
   <div class="container">
     <header>
       <h1>Society Committee Selector</h1>
-      <p class="subtitle">Fair lottery prioritizing fresh owners, then shortest tenure</p>
+      <p class="subtitle">Fresh owners first &bull; Single-term fallback by oldest tenure &bull; Multi-term excluded</p>
     </header>
 
     <div class="layout">
       <!-- Left Panel: Table, Import, and Actions -->
       <section class="card">
         <div class="card-header">
-          <h2>Owners &amp; Service History</h2>
+          <h2>Owners &amp; History</h2>
           <div class="header-actions">
-            <!-- Hidden file input triggered by custom button -->
-            <input type="file" id="excel-file-input" accept=".xlsx, .xls, .csv" style="display: none;" />
-            <button id="upload-btn" type="button" class="btn btn-secondary">&#128196; Upload Excel/CSV</button>
-	    <button id="download-sample-btn" type="button" class="btn btn-secondary">&#128229; Download Sample Excel</button>
+            <!-- Native label acts as the direct touch target on mobile -->
+            <label for="excel-file-input" class="btn btn-secondary upload-label">
+              &#128196; Upload Excel/CSV
+            </label>
+            <input 
+              type="file" 
+              id="excel-file-input" 
+              accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv" 
+            />
+            <button id="download-sample-btn" type="button" class="btn btn-secondary">&#128229; Sample</button>
             <button id="add-row-btn" type="button" class="btn btn-secondary">+ Add Owner</button>
           </div>
         </div>
@@ -35,19 +40,25 @@
               <tr>
                 <th>Owner Name</th>
                 <th>Years Served (e.g. 2021, 2023)</th>
-                <th style="width: 45px; text-align: center;">Action</th>
+                <th style="width: 48px; text-align: center;">Action</th>
               </tr>
             </thead>
             <tbody id="owners-tbody">
-              <!-- Dynamically rendered rows -->
+              <!-- Dynamically populated rows -->
             </tbody>
           </table>
         </div>
 
         <div class="controls-bar">
-          <div class="input-group">
-            <label for="required-count">Committee Size Needed:</label>
-            <input type="number" id="required-count" min="1" value="3" />
+          <div class="input-row">
+            <div class="input-group">
+              <label for="selection-year">Selection Year:</label>
+              <input type="number" id="selection-year" min="2000" max="2100" />
+            </div>
+            <div class="input-group">
+              <label for="required-count">Committee Size:</label>
+              <input type="number" id="required-count" min="1" value="3" />
+            </div>
           </div>
           <button id="submit-btn" type="button" class="btn btn-primary">Generate Committee</button>
         </div>
@@ -56,7 +67,7 @@
       <!-- Right Panel: Selection Output -->
       <section class="card">
         <h2>Selected Committee</h2>
-        <div id="results-meta" class="meta-info">Load or add owners, set committee size, and click "Generate Committee".</div>
+        <div id="results-meta" class="meta-info">Set parameters and tap "Generate Committee".</div>
         <ul id="results-list" class="results-list">
           <li class="empty-state">No selection generated yet.</li>
         </ul>
