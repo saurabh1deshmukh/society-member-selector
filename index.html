@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Committee Selection Tool</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Society Committee Randomizer</h1>
+      <p class="subtitle">Fair & random committee member selection based on tenure and historical service.</p>
+    </header>
+
+    <div class="grid">
+      <!-- Input Configuration Section -->
+      <section class="card">
+        <h2>1. Configure Pools</h2>
+
+        <div class="form-group">
+          <label for="ownersInput">
+            <strong>All Eligible Owners</strong> 
+            <small>(One name per line)</small>
+          </label>
+          <textarea id="ownersInput" rows="6" placeholder="Alice Johnson&#10;Bob Smith&#10;Charlie Davis&#10;Diana Prince"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="historyInput">
+            <strong>Past Committee History</strong> 
+            <small>(Format: Year: Name1, Name2)</small>
+          </label>
+          <textarea id="historyInput" rows="6" placeholder="2023: Alice Johnson, Bob Smith&#10;2022: Charlie Davis&#10;2021: Frank Miller"></textarea>
+        </div>
+
+        <div class="form-group inline">
+          <div>
+            <label for="targetCount"><strong>Required Committee Size:</strong></label>
+            <input type="number" id="targetCount" min="1" value="3">
+          </div>
+          <button id="generateBtn" class="btn primary">Generate Committee</button>
+        </div>
+      </section>
+
+      <!-- Results & Breakdown Section -->
+      <section class="card">
+        <h2>2. Selection Results</h2>
+        <div id="statusMessage" class="status-box hidden"></div>
+
+        <div id="resultsContainer">
+          <div class="empty-state">Configure details and click "Generate Committee" to view selections.</div>
+        </div>
+
+        <div id="statsSummary" class="stats-summary hidden">
+          <!-- Stats will be populated via JS -->
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
