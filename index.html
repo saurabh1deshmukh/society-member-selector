@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Society Committee Selector</title>
   <link rel="stylesheet" href="styles.css" />
+  <!-- SheetJS Library for reading .xlsx and .xls files directly in the browser -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
 <body>
   <div class="container">
@@ -14,11 +16,16 @@
     </header>
 
     <div class="layout">
-      <!-- Left Panel: Owner Table & Config -->
+      <!-- Left Panel: Table, Import, and Actions -->
       <section class="card">
         <div class="card-header">
           <h2>Owners &amp; Service History</h2>
-          <button id="add-row-btn" class="btn btn-secondary">+ Add Owner</button>
+          <div class="header-actions">
+            <!-- Hidden file input triggered by custom button -->
+            <input type="file" id="excel-file-input" accept=".xlsx, .xls, .csv" style="display: none;" />
+            <button id="upload-btn" type="button" class="btn btn-secondary">&#128196; Upload Excel/CSV</button>
+            <button id="add-row-btn" type="button" class="btn btn-secondary">+ Add Owner</button>
+          </div>
         </div>
 
         <div class="table-container">
@@ -27,11 +34,11 @@
               <tr>
                 <th>Owner Name</th>
                 <th>Years Served (e.g. 2021, 2023)</th>
-                <th style="width: 50px;">Action</th>
+                <th style="width: 45px; text-align: center;">Action</th>
               </tr>
             </thead>
             <tbody id="owners-tbody">
-              <!-- Dynamically populated rows -->
+              <!-- Dynamically rendered rows -->
             </tbody>
           </table>
         </div>
@@ -41,16 +48,16 @@
             <label for="required-count">Committee Size Needed:</label>
             <input type="number" id="required-count" min="1" value="3" />
           </div>
-          <button id="submit-btn" class="btn btn-primary">Generate Committee</button>
+          <button id="submit-btn" type="button" class="btn btn-primary">Generate Committee</button>
         </div>
       </section>
 
       <!-- Right Panel: Selection Output -->
       <section class="card">
         <h2>Selected Committee</h2>
-        <div id="results-meta" class="meta-info">Configure your owners and click "Generate Committee".</div>
+        <div id="results-meta" class="meta-info">Load or add owners, set committee size, and click "Generate Committee".</div>
         <ul id="results-list" class="results-list">
-          <li class="empty-state">No selection made yet.</li>
+          <li class="empty-state">No selection generated yet.</li>
         </ul>
       </section>
     </div>
